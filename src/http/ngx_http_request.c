@@ -269,7 +269,7 @@ ngx_http_init_request(ngx_event_t *rev)
 
         ngx_http_close_connection(c);	//超时直接关闭连接
         return;
-    }
+    } 
 
     c->requests++;		//记录处理请求次数
 
