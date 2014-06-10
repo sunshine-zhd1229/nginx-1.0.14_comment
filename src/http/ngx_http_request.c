@@ -203,17 +203,17 @@ ngx_http_init_connection(ngx_connection_t *c)
     c->log_error = NGX_ERROR_INFO;
 
     rev = c->read;
-    rev->handler = ngx_http_init_request;//ÉèÖÃ¶Áhandler
+    rev->handler = ngx_http_init_request;//ï¿½ï¿½ï¿½Ã¶ï¿½handler
     c->write->handler = ngx_http_empty_handler;
 
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
 #endif
 
-    if (rev->ready) {//Èç¹û½ÓÊÕ×¼±¸ºÃÁË£¬ÔòÖ±½Óµ÷ÓÃngx_http_init_request
+    if (rev->ready) {//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×¼ï¿½ï¿½ï¿½ï¿½ï¿½Ë£ï¿½ï¿½ï¿½Ö±ï¿½Óµï¿½ï¿½ï¿½ngx_http_init_request
         /* the deferred accept(), rtsig, aio, iocp */
 
-        if (ngx_use_accept_mutex) {//Èç¹ûÊ¹ÓÃÁËmutexËø£¬Ôòpost Õâ¸öevent£¬È»ºó·µ»Ø¡£
+        if (ngx_use_accept_mutex) {//ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½mutexï¿½ï¿½ï¿½ï¿½ï¿½ï¿½post ï¿½ï¿½ï¿½ï¿½eventï¿½ï¿½È»ï¿½ó·µ»Ø¡ï¿½
             ngx_post_event(rev, &ngx_posted_events);
             return;
         }
@@ -222,10 +222,10 @@ ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-	//Ìí¼Ó¶¨Ê±Æ÷
+	//ï¿½ï¿½ï¿½Ó¶ï¿½Ê±ï¿½ï¿½
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
-	//½«ÊÂ¼þ¹ÒÔØµ½ÊÂ¼þ´¦ÀíÆ÷
+	//ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
@@ -261,19 +261,19 @@ ngx_http_init_request(ngx_event_t *rev)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
 #endif
 
-    c = rev->data;
+    c = rev->data;		//å–å¾—è¿žæŽ¥
 
-    if (rev->timedout) {
+    if (rev->timedout) {	//åˆ¤æ–­æ˜¯å¦è¶…æ—¶
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
 
-        ngx_http_close_connection(c);
+        ngx_http_close_connection(c);	//è¶…æ—¶ç›´æŽ¥å…³é—­è¿žæŽ¥
         return;
     }
 
-    c->requests++;
+    c->requests++;		//è®°å½•å¤„ç†è¯·æ±‚æ¬¡æ•°
 
-    hc = c->data;
-
+    hc = c->data;		
+    
     if (hc == NULL) {
         hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
         if (hc == NULL) {
