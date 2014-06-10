@@ -203,29 +203,30 @@ ngx_http_init_connection(ngx_connection_t *c)
     c->log_error = NGX_ERROR_INFO;
 
     rev = c->read;
-    rev->handler = ngx_http_init_request;//���ö�handler
-    c->write->handler = ngx_http_empty_handler;
+    rev->handler = ngx_http_init_request;		//设置读事件回调函数
+    c->write->handler = ngx_http_empty_handler;		//写事件回调函数
 
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
 #endif
 
-    if (rev->ready) {//��������׼�����ˣ���ֱ�ӵ���ngx_http_init_request
+    if (rev->ready) {	//连接设置了TCP_DEFER_ACCEPT属性，已有数据到达	
         /* the deferred accept(), rtsig, aio, iocp */
 
-        if (ngx_use_accept_mutex) {//����ʹ����mutex������post ����event��Ȼ�󷵻ء�
+        if (ngx_use_accept_mutex) {
             ngx_post_event(rev, &ngx_posted_events);
             return;
         }
-
+	
+	//未使用accept互斥锁，直接处理数据
         ngx_http_init_request(rev);
         return;
     }
 
-	//���Ӷ�ʱ��
+	//无数据到达，将该事件加入定时器
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
-	//���¼����ص��¼�������
+	
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
@@ -282,9 +283,10 @@ ngx_http_init_request(ngx_event_t *rev)
         }
     }
 
-    r = hc->request;
+    r = hc->request;		//取得request
 
     if (r) {
+    	//r已存在说明该结构被复用，清空该结构体
         ngx_memzero(r, sizeof(ngx_http_request_t));
 
         r->pipeline = hc->pipeline;
@@ -294,16 +296,18 @@ ngx_http_init_request(ngx_event_t *rev)
         }
 
     } else {
+    	//创建一个request结构体
         r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t));
         if (r == NULL) {
             ngx_http_close_connection(c);
             return;
         }
-
+	//存为ngx_http_connection_t结构的request
         hc->request = r;
     }
 
-    c->data = r;
+    c->data = r;	//连接的data成员设为request
+    
     r->http_connection = hc;
 
     c->sent = 0;
