@@ -36,35 +36,42 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_temp_file_t           *tf;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
-
+    
+    //主请求引用+1
     r->main->count++;
-
+    
+    //请求体已经被读取或丢弃
     if (r->request_body || r->discard_body) {
         post_handler(r);
         return NGX_OK;
     }
 
+    //检查是否有Expect: 100-continue头，该请求头表示客户端期望发送请求体，服务器回复“HTTP/1.1 100 Continue”允许客户端发送请求体
     if (ngx_http_test_expect(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-
+    
+    //分配ngx_http_request_body_t结构
     rb = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
     if (rb == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     r->request_body = rb;
-
+    
+    //无请求体
     if (r->headers_in.content_length_n < 0) {
         post_handler(r);
         return NGX_OK;
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
+    
+    //请求体长度为0
     if (r->headers_in.content_length_n == 0) {
 
         if (r->request_body_in_file_only) {
+            //创建一个空的临时文件
             tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
             if (tf == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -97,7 +104,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
         return NGX_OK;
     }
-
+    
+    //有请求体
     rb->post_handler = post_handler;
 
     /*
@@ -109,14 +117,16 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
      */
 
     preread = r->header_in->last - r->header_in->pos;
-
+    
+    //header_in中有未处理数据，表明预读了请求体
     if (preread) {
 
         /* there is the pre-read part of the request body */
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http client request body preread %uz", preread);
-
+        
+        //分配空间存储预读的请求体
         b = ngx_calloc_buf(r->pool);
         if (b == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -137,7 +147,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         rb->bufs->next = NULL;
 
         rb->buf = b;
-
+        
+        //已预读了全部请求体
         if ((off_t) preread >= r->headers_in.content_length_n) {
 
             /* the whole request body was pre-read */
@@ -170,7 +181,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         if (rb->rest <= (off_t) (b->end - b->last)) {
 
             /* the whole request body may be placed in r->header_in */
-
+            
             rb->to_write = rb->bufs;
 
             r->read_event_handler = ngx_http_read_client_request_body_handler;
@@ -233,6 +244,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         rb->to_write = rb->bufs->next ? rb->bufs->next : rb->bufs;
     }
 
+    //读完请求体后，调用该回调函数
     r->read_event_handler = ngx_http_read_client_request_body_handler;
 
     return ngx_http_do_read_client_request_body(r);
@@ -441,6 +453,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     ssize_t       size;
     ngx_event_t  *rev;
 
+    //子请求不需处理
     if (r != r->main || r->discard_body) {
         return NGX_OK;
     }
@@ -454,16 +467,19 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http set discard body");
 
     if (rev->timer_set) {
+        //删除读事件定时器
         ngx_del_timer(rev);
     }
 
     if (r->headers_in.content_length_n <= 0 || r->request_body) {
+        //无请求体或已读完直接返回
         return NGX_OK;
     }
 
     size = r->header_in->last - r->header_in->pos;
 
     if (size) {
+        //丢弃预读数据
         if (r->headers_in.content_length_n > size) {
             r->header_in->pos += size;
             r->headers_in.content_length_n -= size;
@@ -475,17 +491,20 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         }
     }
 
+    //设置读事件回调函数并挂在读事件
     r->read_event_handler = ngx_http_discarded_request_body_handler;
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-
+    
+    //读取并丢弃请求体
     if (ngx_http_read_discarded_request_body(r) == NGX_OK) {
         r->lingering_close = 0;
 
     } else {
-        r->count++;
+        //客户端没有一次发完请求体，在下一次读事件是，通过ngx_http_discarded_request_body_handler函数处理
+        r->count++;     //可能在请求处理完后仍未发送完请求体，防止处理完请求后直接释放请求
         r->discard_body = 1;
     }
 
@@ -506,6 +525,9 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
     rev = c->read;
 
     if (rev->timedout) {
+        //定时器是在处理完请求，但请求体没有完全丢弃时挂载的
+        //在ngx_http_finalize_connection()函数中，如果检查到还有未丢弃的请求体时，nginx会添加一个读事件定时器
+        //超时则直接返回并断开连接
         c->timedout = 1;
         c->error = 1;
         ngx_http_finalize_request(r, NGX_ERROR);
@@ -525,7 +547,8 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
     } else {
         timer = 0;
     }
-
+    
+    //读取并丢弃请求体
     rc = ngx_http_read_discarded_request_body(r);
 
     if (rc == NGX_OK) {
@@ -570,6 +593,7 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
 
     for ( ;; ) {
         if (r->headers_in.content_length_n == 0) {
+            //已读完请求体，
             r->read_event_handler = ngx_http_block_reading;
             return NGX_OK;
         }
@@ -578,6 +602,7 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
             return NGX_AGAIN;
         }
 
+        //读取并丢弃请求体
         size = (r->headers_in.content_length_n > NGX_HTTP_DISCARD_BUFFER_SIZE) ?
                    NGX_HTTP_DISCARD_BUFFER_SIZE:
                    (size_t) r->headers_in.content_length_n;
