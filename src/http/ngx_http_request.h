@@ -217,7 +217,7 @@ typedef struct {
 
     ngx_array_t                       cookies; //cookie
 
-    ngx_str_t                         server;
+    ngx_str_t                         server;   //uri中的域名
     off_t                             content_length_n;
     time_t                            keep_alive_n;
 
