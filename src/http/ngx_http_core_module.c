@@ -881,24 +881,28 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "generic phase: %ui", r->phase_handler);
 
+	//è°ƒç”¨å¤„ç†å‡½æ•°
     rc = ph->handler(r);
 
     if (rc == NGX_OK) {
+    	//è¿›å…¥ä¸‹ä¸€ä¸ªè¯·æ±‚å¤„ç†é˜¶æ®µ
         r->phase_handler = ph->next;
         return NGX_AGAIN;
     }
 
     if (rc == NGX_DECLINED) {
+    	//ç»§ç»­è°ƒç”¨æœ¬é˜¶æ®µçš„ä¸‹ä¸€ä¸ªå¤„ç†å‡½æ•°
         r->phase_handler++;
         return NGX_AGAIN;
     }
 
     if (rc == NGX_AGAIN || rc == NGX_DONE) {
+    	//ç­‰å¾…æŸä¸ªäº‹ä»¶å‘ç”Ÿï¼Œç»§ç»­å¤„ç†
         return NGX_OK;
     }
 
     /* rc == NGX_ERROR || rc == NGX_HTTP_...  */
-
+	//å‘ç”Ÿé”™è¯¯, ç»“æŸè¯·æ±‚
     ngx_http_finalize_request(r, rc);
 
     return NGX_OK;
@@ -916,6 +920,7 @@ ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     rc = ph->handler(r);
 
     if (rc == NGX_DECLINED) {
+    	//ç»§ç»­è°ƒç”¨æœ¬é˜¶æ®µçš„ä¸‹ä¸€ä¸ªå¤„ç†å‡½æ•°
         r->phase_handler++;
         return NGX_AGAIN;
     }
@@ -943,7 +948,8 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
 
     r->content_handler = NULL;
     r->uri_changed = 0;
-
+	
+	//æŸ¥æ‰¾locationé…ç½®
     rc = ngx_http_core_find_location(r);
 
     if (rc == NGX_ERROR) {
@@ -984,6 +990,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
     }
 
     if (rc == NGX_DONE) {
+    	
         ngx_http_clear_location(r);
 
         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
@@ -1363,6 +1370,7 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_str_t  path;
 
     if (r->content_handler) {
+    	//è‹¥è®¾ç½®äº†conent_handlerï¼Œåˆ™ç›´æ¥è°ƒç”¨ï¼Œä¸å†æ‰§è¡Œhandlersæ‰§è¡Œé“¾
         r->write_event_handler = ngx_http_request_empty_handler;
         ngx_http_finalize_request(r, r->content_handler(r));
         return NGX_OK;
@@ -1371,6 +1379,7 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "content phase: %ui", r->phase_handler);
 
+	//æ‰§è¡Œhandleré“¾
     rc = ph->handler(r);
 
     if (rc != NGX_DECLINED) {
@@ -1868,7 +1877,7 @@ ngx_http_send_header(ngx_http_request_t *r)
     return ngx_http_top_header_filter(r);
 }
 
-//rÊÇrequestÇëÇó£¬inÊÇÊäÈëµÄchain
+//rï¿½ï¿½requestï¿½ï¿½ï¿½ï¿½ï¿½ï¿½inï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½chain
 ngx_int_t
 ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
@@ -2636,10 +2645,10 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     }
 
     http_ctx = cf->ctx;
-    ctx->main_conf = http_ctx->main_conf;//main conf²»±ä
+    ctx->main_conf = http_ctx->main_conf;//main confï¿½ï¿½ï¿½ï¿½
 
     /* the server{}'s srv_conf */
-	//´´½¨ĞÂµÄsrvºÍloc conf.
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½srvï¿½ï¿½loc conf.
     ctx->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
     if (ctx->srv_conf == NULL) {
         return NGX_CONF_ERROR;
@@ -2686,7 +2695,7 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
 
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
-	//±£´æËùÓĞµÄservers£¬¿ÉÒÔ¿´µ½ÊÇ±£´æÔÚmainÖĞµÄ¡£ÕâÑù×Ó×îºóÔÚHTTP mainÖĞ¾Í¿ÉÒÔÈ¡µ½Õâ¸ösrv 
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğµï¿½serversï¿½ï¿½ï¿½ï¿½ï¿½Ô¿ï¿½ï¿½ï¿½ï¿½Ç±ï¿½ï¿½ï¿½ï¿½ï¿½mainï¿½ĞµÄ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½HTTP mainï¿½Ğ¾Í¿ï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½srv 
     cscfp = ngx_array_push(&cmcf->servers);
     if (cscfp == NULL) {
         return NGX_CONF_ERROR;
@@ -2696,14 +2705,14 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
 
     /* parse inside server{} */
-	//½âÎöserver{} block£¬¿ÉÒÔ¿´µ½ÉèÖÃtypeÎªsrv_conf.
+	//ï¿½ï¿½ï¿½ï¿½server{} blockï¿½ï¿½ï¿½ï¿½ï¿½Ô¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½typeÎªsrv_conf.
     pcf = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_SRV_CONF;
 
     rv = ngx_conf_parse(cf, NULL);
 
-	//»Ö¸´cf.
+	//ï¿½Ö¸ï¿½cf.
     *cf = pcf;
 
     if (rv == NGX_CONF_OK && !cscf->listen) {
