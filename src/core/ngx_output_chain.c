@@ -54,14 +54,14 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
          */
 
         if (in == NULL) {
-            return ctx->output_filter(ctx->filter_ctx, in);
+            return ctx->output_filter(ctx->filter_ctx, in);     //调用下一个filter
         }
 
         if (in->next == NULL
 #if (NGX_SENDFILE_LIMIT)
             && !(in->buf->in_file && in->buf->file_last > NGX_SENDFILE_LIMIT)
 #endif
-            && ngx_output_chain_as_is(ctx, in->buf))
+            && ngx_output_chain_as_is(ctx, in->buf)) //判断是否需要复制buf
         {
             return ctx->output_filter(ctx->filter_ctx, in);
         }
